@@ -49,7 +49,7 @@ public:
 
     void record_remote(std::wstring_view text);
 
-    void set_remote_suppresion(bool suppress) noexcept;
+    void set_remote_suppression(bool suppress) noexcept;
 
     [[nodiscard]] bool is_suppressed() const noexcept;
 
