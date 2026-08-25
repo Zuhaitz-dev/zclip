@@ -10,12 +10,21 @@
  *              Word, or VS Code. It is about how they operate with OS events.
  *              This is not a bug on our side, in the next phase we will work on
  *              loop prevention and deduplication among other things.
+ *  -> Phase 2: Protocol framing, deduplication, and loop prevention.
+ *      Phase 2.1: So here we are fixing the note above, also for example, if you
+ *              are receiving clipboard data over the network and applying it
+ *              can trigger synthetic OS capture events...
  */
 
 #include "clipboard_guard.hpp"
 #include "clipboard_listener.hpp"
+#include "loop_preventer.hpp"
+
 #include <iostream>  // Because we don't have a proper replacement for 'std::cin' yet
 #include <print>
+
+namespace
+{
 
 /*
  * So before I was like, let's just use 'std::wcout, but it is having issues
@@ -42,12 +51,25 @@ std::string utf16_to_utf8(std::wstring_view wstr)
     return str_to;
 }
 
+}  // namespace
+
 int main()
 {
-    std::println("=> Phase 1: Win32 clipboard verification...");
-    std::println("Listening for clipboard events... Copy any text to test. Press Enter to quit.");
+    ::SetConsoleOutputCP(CP_UTF8);
 
-    zclip::ClipboardListener listener([](const std::wstring& text) {
+    std::println("=> Phase 2.1: Clipboard monitoring with loop and duplicate prevention...");
+    std::println(
+        "Listening for clipboard events... Duplicate/multi-format OS echoes are suppressed.");
+    std::println("Press Enter to terminate.");
+
+    zclip::LoopPreventer preventer;
+
+    zclip::ClipboardListener listener([&preventer](const std::wstring& text) {
+        if (!preventer.test_and_record(text))
+        {
+            return;
+        }
+
         std::string utf8_text = utf16_to_utf8(text);
         std::println("[EVENT] Captured clipboard update: {}", utf8_text);
     });
