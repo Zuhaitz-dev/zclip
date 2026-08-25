@@ -32,6 +32,7 @@ endif ()
 add_library(zclip_core STATIC
     src/clipboard_guard.cpp
     src/clipboard_listener.cpp
+    src/loop_preventer.cpp
 )
 
 target_include_directories(zclip_core PUBLIC include)
