@@ -64,7 +64,6 @@ private:
     /*
      * So we are gonna use a binary semaphore to ensure the message loop and queue are initialized
      * before 'start()' returns... This way we can prevent the possible race condition.
-     *
      */
     std::binary_semaphore m_ready_signal{0};
 };
