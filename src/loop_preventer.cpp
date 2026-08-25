@@ -47,7 +47,7 @@ void LoopPreventer::record_remote(std::wstring_view text)
     m_cursor = (m_cursor + 1) % RingBufferSize;
 }
 
-void LoopPreventer::set_remote_suppresion(bool suppress) noexcept
+void LoopPreventer::set_remote_suppression(bool suppress) noexcept
 {
     m_suppress_local_capture.store(suppress, std::memory_order_release);
 }

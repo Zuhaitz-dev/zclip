@@ -68,3 +68,20 @@ if (CLANG_TIDY_EXE)
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
     )
 endif()
+
+# Unit tests!
+
+add_executable(test_loop_preventer
+    tests/test_loop_preventer.cpp
+)
+
+target_link_libraries(test_loop_preventer PRIVATE
+    zclip_core
+)
+
+target_include_directories(test_loop_preventer PRIVATE
+    ${PROJECT_SOURCE_DIR}/include
+)
+
+enable_testing()
+add_test(NAME LoopPreventerTest COMMAND test_loop_preventer)
