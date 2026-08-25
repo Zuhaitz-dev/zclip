@@ -32,7 +32,7 @@ void ClipboardListener::start()
     m_worker_thread = std::thread([this]() { message_loop(); });
 
     /*
-     * So we block unitl the message loop is properly initialized and listening.
+     * So we block until the message loop is properly initialized and listening.
      * This way we prevent that m_hwnd and m_thread_id are in invalid states.
      */
     m_ready_signal.acquire();

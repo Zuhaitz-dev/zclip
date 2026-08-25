@@ -33,6 +33,7 @@ add_library(zclip_core STATIC
     src/clipboard_guard.cpp
     src/clipboard_listener.cpp
     src/loop_preventer.cpp
+    src/framing.cpp
 )
 
 target_include_directories(zclip_core PUBLIC include)
@@ -69,19 +70,16 @@ if (CLANG_TIDY_EXE)
     )
 endif()
 
-# Unit tests!
+# Unit testsss.
 
-add_executable(test_loop_preventer
-    tests/test_loop_preventer.cpp
-)
+add_executable(test_loop_preventer tests/test_loop_preventer.cpp)
+target_link_libraries(test_loop_preventer PRIVATE zclip_core)
+target_include_directories(test_loop_preventer PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
-target_link_libraries(test_loop_preventer PRIVATE
-    zclip_core
-)
-
-target_include_directories(test_loop_preventer PRIVATE
-    ${PROJECT_SOURCE_DIR}/include
-)
+add_executable(test_framing tests/test_framing.cpp)
+target_link_libraries(test_framing PRIVATE zclip_core)
+target_include_directories(test_framing PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
 enable_testing()
 add_test(NAME LoopPreventerTest COMMAND test_loop_preventer)
+add_test(NAME FramingTest COMMAND test_framing)

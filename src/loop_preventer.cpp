@@ -16,7 +16,7 @@ bool LoopPreventer::test_and_record(std::wstring_view text)
         return false;
     }
 
-    const std::uint64_t hash = hash_payload(text);
+    const std::uint64_t hash{hash_payload(text)};
 
     std::lock_guard<std::mutex> lock(m_mutex);
 

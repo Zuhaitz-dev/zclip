@@ -14,6 +14,9 @@
  *      Phase 2.1: So here we are fixing the note above, also for example, if you
  *              are receiving clipboard data over the network and applying it
  *              can trigger synthetic OS capture events...
+ *      Phase 2.2: protocol framing it is, find more information over 'include/framing.hpp'
+ *              and 'src/framing.cpp'. It was quite simple, pretty much just making sure
+ *              the frames are correct.
  */
 
 #include "clipboard_guard.hpp"
