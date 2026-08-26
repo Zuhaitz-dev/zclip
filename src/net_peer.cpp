@@ -125,11 +125,15 @@ void TcpPeer::disconnect() noexcept
             ::closesocket(m_socket);
             m_socket = INVALID_SOCKET;
         }
+    }
 
-        if (m_rx_thread.joinable())
-        {
-            m_rx_thread.join();
-        }
+    /*
+     * Must always join, even if the thread gracefully exited and set m_running to false.
+     * Either way, once the sanitizer action works properly we can check this.
+    */ 
+    if (m_rx_thread.joinable())
+    {
+        m_rx_thread.join();
     }
     m_parser.reset();
 }
