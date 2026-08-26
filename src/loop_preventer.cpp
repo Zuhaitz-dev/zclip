@@ -18,7 +18,7 @@ bool LoopPreventer::test_and_record(std::wstring_view text)
 
     const std::uint64_t hash{hash_payload(text)};
 
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
 
     for (const std::uint64_t cached_hash : m_recent_hashes)
     {
@@ -28,7 +28,7 @@ bool LoopPreventer::test_and_record(std::wstring_view text)
         }
     }
 
-    m_recent_hashes[m_cursor] = hash;
+    m_recent_hashes.at(m_cursor % RingBufferSize) = hash;
     m_cursor = (m_cursor + 1) % RingBufferSize;
     return true;
 }
@@ -42,8 +42,8 @@ void LoopPreventer::record_remote(std::wstring_view text)
 
     const std::uint64_t hash = hash_payload(text);
 
-    std::lock_guard<std::mutex> lock(m_mutex);
-    m_recent_hashes[m_cursor] = hash;
+    std::scoped_lock lock(m_mutex);
+    m_recent_hashes.at(m_cursor % RingBufferSize) = hash;
     m_cursor = (m_cursor + 1) % RingBufferSize;
 }
 
@@ -59,7 +59,7 @@ bool LoopPreventer::is_suppressed() const noexcept
 
 void LoopPreventer::reset() noexcept
 {
-    std::lock_guard<std::mutex> lock(m_mutex);
+    std::scoped_lock lock(m_mutex);
     m_recent_hashes.fill(0);
     m_cursor = 0;
     m_suppress_local_capture.store(false, std::memory_order_relaxed);
