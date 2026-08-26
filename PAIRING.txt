@@ -1,0 +1,21 @@
+zclip - peer-to-peer clipboard sync
+===================================
+
+Quick start (two Windows 11 PCs on the same private network):
+
+PC A (server):
+    zclip.exe --server --port 6767 --secret "your-shared-secret"
+
+PC B (client):
+    zclip.exe --ip <PC-A-IP> --port 6767 --secret "your-shared-secret"
+
+Steps:
+1. Put the same shared secret in both --secret arguments.
+2. On PC A, allow inbound TCP on port 6767 through Windows Firewall
+   (Private network profile).
+3. Start the server on PC A, then the client on PC B.
+4. Copy on either machine; the text appears on the other machine's
+   clipboard. Stop with Ctrl+C.
+
+Full instructions, architecture, security details and limitations:
+see README.md.

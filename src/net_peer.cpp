@@ -74,8 +74,12 @@ std::expected<void, NetError> TcpPeer::listen(uint16_t port)
         SOCKET client_sock = ::accept(m_socket, nullptr, nullptr);
         if (INVALID_SOCKET != client_sock)
         {
-            ::closesocket(m_socket);
-            m_socket = client_sock;
+            {
+                std::scoped_lock lock(m_io_mutex);
+                ::closesocket(m_socket);
+                m_socket = client_sock;
+            }
+            std::println("[Net] Client connected.");
             receive_loop();
         }
     });
@@ -118,13 +122,16 @@ std::expected<void, NetError> TcpPeer::connect(const std::string& ip, uint16_t p
 
 void TcpPeer::disconnect() noexcept
 {
-    if (m_running.exchange(false))
     {
-        if (INVALID_SOCKET != m_socket)
+        std::scoped_lock lock(m_io_mutex);
+        if (m_running.exchange(false))
         {
-            ::shutdown(m_socket, SD_BOTH);
-            ::closesocket(m_socket);
-            m_socket = INVALID_SOCKET;
+            if (INVALID_SOCKET != m_socket)
+            {
+                ::shutdown(m_socket, SD_BOTH);
+                ::closesocket(m_socket);
+                m_socket = INVALID_SOCKET;
+            }
         }
     }
 
@@ -141,6 +148,8 @@ void TcpPeer::disconnect() noexcept
 
 bool TcpPeer::send_payload(std::string_view utf8_payload)
 {
+    std::scoped_lock lock(m_io_mutex);
+
     if (!m_running.load() || INVALID_SOCKET == m_socket)
     {
         return false;

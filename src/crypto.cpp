@@ -114,16 +114,20 @@ std::expected<std::vector<uint8_t>, std::string> encrypt_payload(std::string_vie
     KeyHandle key(h_key);
 
     /*
-     * Generate 12-byte IV (nonce)...
+     * Generate a 12-byte IV (nonce)...
+     * Notes: CNG's GCM implementation reads a full 16-byte block from the
+     * nonce buffer (via auth_info.pbNonce) regardless of cbNonce, so we pad
+     * the buffer to the block size while keeping a 12-byte logical nonce.
+     * 
+     * Thank god, the test caught this with ASAN.
      */
-    std::vector<uint8_t> iv(12, 0);
-    ::BCryptGenRandom(nullptr, iv.data(), static_cast<ULONG>(iv.size()),
-                      BCRYPT_USE_SYSTEM_PREFERRED_RNG);
+    std::vector<uint8_t> iv(16, 0);
+    ::BCryptGenRandom(nullptr, iv.data(), 12, BCRYPT_USE_SYSTEM_PREFERRED_RNG);
 
     BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO auth_info;
     BCRYPT_INIT_AUTH_MODE_INFO(auth_info);
     auth_info.pbNonce = iv.data();
-    auth_info.cbNonce = static_cast<ULONG>(iv.size());
+    auth_info.cbNonce = 12;
 
     std::vector<uint8_t> tag(16, 0);
     auth_info.pbTag = tag.data();
@@ -131,17 +135,17 @@ std::expected<std::vector<uint8_t>, std::string> encrypt_payload(std::string_vie
 
     ULONG cipher_len = 0;
     if (::BCryptEncrypt(key.get(), reinterpret_cast<PUCHAR>(const_cast<char*>(plaintext.data())),
-                        static_cast<ULONG>(plaintext.size()), &auth_info, iv.data(),
-                        static_cast<ULONG>(iv.size()), nullptr, 0, &cipher_len, 0) < 0)
+                        static_cast<ULONG>(plaintext.size()), &auth_info, iv.data(), 12, nullptr, 0,
+                        &cipher_len, 0) < 0)
     {
         return std::unexpected("Failed to get ciphertext length.");
     }
 
     std::vector<uint8_t> ciphertext(cipher_len, 0);
     if (::BCryptEncrypt(key.get(), reinterpret_cast<PUCHAR>(const_cast<char*>(plaintext.data())),
-                        static_cast<ULONG>(plaintext.size()), &auth_info, iv.data(),
-                        static_cast<ULONG>(iv.size()), ciphertext.data(),
-                        static_cast<ULONG>(ciphertext.size()), &cipher_len, 0) < 0)
+                        static_cast<ULONG>(plaintext.size()), &auth_info, iv.data(), 12,
+                        ciphertext.data(), static_cast<ULONG>(ciphertext.size()), &cipher_len, 0) <
+        0)
     {
         return std::unexpected("Failed to encrypt data.");
     }
@@ -151,8 +155,8 @@ std::expected<std::vector<uint8_t>, std::string> encrypt_payload(std::string_vie
      * [IV (12 bytes)] + [Ciphertext] + [MAC Tag (16 bytes)]
      */
     std::vector<uint8_t> final_payload;
-    final_payload.reserve(iv.size() + ciphertext.size() + tag.size());
-    final_payload.insert(final_payload.end(), iv.begin(), iv.end());
+    final_payload.reserve(12 + ciphertext.size() + tag.size());
+    final_payload.insert(final_payload.end(), iv.begin(), iv.begin() + 12);
     final_payload.insert(final_payload.end(), ciphertext.begin(), ciphertext.end());
     final_payload.insert(final_payload.end(), tag.begin(), tag.end());
 
@@ -205,21 +209,22 @@ std::expected<std::string, std::string> decrypt_payload(std::span<const uint8_t>
      * [IV (12 bytes)] + [Ciphertext] + [MAC Tag (16 bytes)]
      */
     std::vector<uint8_t> iv(payload.begin(), payload.begin() + 12);
+    iv.resize(16, 0);  // Pad to block size for CNG GCM (see encrypt_payload).
     std::vector<uint8_t> tag(payload.end() - 16, payload.end());
     std::span<const uint8_t> ciphertext = payload.subspan(12, payload.size() - 28);
 
     BCRYPT_AUTHENTICATED_CIPHER_MODE_INFO auth_info;
     BCRYPT_INIT_AUTH_MODE_INFO(auth_info);
     auth_info.pbNonce = iv.data();
-    auth_info.cbNonce = static_cast<ULONG>(iv.size());
+    auth_info.cbNonce = 12;
     auth_info.pbTag = tag.data();
     auth_info.cbTag = static_cast<ULONG>(tag.size());
 
     ULONG plain_len = 0;
     if (::BCryptDecrypt(key.get(),
                         reinterpret_cast<PUCHAR>(const_cast<uint8_t*>(ciphertext.data())),
-                        static_cast<ULONG>(ciphertext.size()), &auth_info, iv.data(),
-                        static_cast<ULONG>(iv.size()), nullptr, 0, &plain_len, 0) < 0)
+                        static_cast<ULONG>(ciphertext.size()), &auth_info, iv.data(), 12, nullptr, 0,
+                        &plain_len, 0) < 0)
     {
         return std::unexpected(
             "Failed to authenticate or get plaintext length. (Wrong PSK or tampered data)");
@@ -228,8 +233,8 @@ std::expected<std::string, std::string> decrypt_payload(std::span<const uint8_t>
     std::string plaintext(plain_len, '\0');
     if (::BCryptDecrypt(key.get(),
                         reinterpret_cast<PUCHAR>(const_cast<uint8_t*>(ciphertext.data())),
-                        static_cast<ULONG>(ciphertext.size()), &auth_info, iv.data(),
-                        static_cast<ULONG>(iv.size()), reinterpret_cast<PUCHAR>(plaintext.data()),
+                        static_cast<ULONG>(ciphertext.size()), &auth_info, iv.data(), 12,
+                        reinterpret_cast<PUCHAR>(plaintext.data()),
                         static_cast<ULONG>(plaintext.size()), &plain_len, 0) < 0)
     {
         return std::unexpected("Failed to decrypt data.");
