@@ -30,6 +30,11 @@
  *              APE checks must be at run-time, not at compile-time.
  *              It is solvable, Cosmopolitan does offer run-time check alternatives, but
  *              it is an overkill for this task, it would be a task in itself.
+ *      Phase 3.2: This is just a little change, the specifications mentioned the fact that it has
+ *              to "recover reasonably from a temporary connection loss". Before, we pretty much just gave up
+ *              with the client if it lost the connection, and we accept a new one when the server loses
+ *              connection because we explicitly closed the listening socket after the first client connected...
+ *              This subsection is just to fit with the requirements given, in a proper way.
  */
 
 #include "clipboard_guard.hpp"
@@ -136,36 +141,48 @@ int main(int argc, char* argv[])
         peer.send_payload(utf16_to_utf8(wtext));
     });
 
-    constexpr std::int32_t PortCl = 6767;   // Sorry.
+    peer.set_on_disconnected([]() { 
+        std::println(stderr, "[Net] Connection lost! Initiating recovery..."); 
+    });
 
-    // Simple CLI for P2P routing, but we will improve this... TODO yeah
-    // Also hardcoding ports is... meh? We gotta change that.
-    if (argc > 1 && "--server" == std::string(argv[1]))
-    {
-        std::println("Starting server on port {}...", PortCl);
+    constexpr std::int32_t PortCl = 6767;  // Sorry.
+    const bool is_server = (argc > 1 && "--server" == std::string(argv[1]));
 
-        if (!peer.listen(PortCl).has_value())
-        {
-            return 1;
-        }
-    }
-    else
-    {
-        std::println("Connecting to client on 127.0.0.1:{}...", PortCl);
-
-        if (!peer.connect("127.0.0.1", PortCl).has_value())
-        {
-            return 1;
-        }
-    }
-
-    std::println("Sync engine active. Press Enter to terminate.");
+    std::println("Sync engine active. Press Ctrl+C to terminate.");
 
     listener.start();
-    std::cin.get();
 
+    while (true)
+    {
+        if (is_server)
+        {
+            std::println("[Net] Starting server on port {}...", PortCl);
+            if (peer.listen(PortCl).has_value())
+            {
+                peer.wait();  // So we block the main thread until the connection drops...
+            }
+            else
+            {
+                std::println(stderr, "[Error] Server failed to bind to port {}.", PortCl);
+            }
+        }
+        else
+        {
+            std::println("[Net] Connecting to client on 127.0.0.1:{}...", PortCl);
+            if (peer.connect("127.0.0.1", PortCl).has_value())
+            {
+                peer.wait();  // Same here.
+            }
+            else
+            {
+                std::println(stderr, "[Error] Failed to connect to 127.0.0.1:{}.", PortCl);
+            }
+        }
+
+        std::println("[Net] Retrying in 3 seconds...");
+        std::this_thread::sleep_for(std::chrono::seconds(3));
+    }
+
+    // Unreachable under normal Ctrl+C exit, but good practice!
     listener.stop();
-    peer.disconnect();
-
-    std::println("Terminated cleanly.");
 }

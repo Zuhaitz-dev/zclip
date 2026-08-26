@@ -168,8 +168,25 @@ bool TcpPeer::send_payload(std::string_view utf8_payload)
     return true;
 }
 
+void TcpPeer::wait() const
+{
+    if (m_rx_thread.joinable())
+    {
+        const_cast<std::thread&>(m_rx_thread).join();
+    }
+}
+
 void TcpPeer::receive_loop()
 {
+    /*
+     * I sometimes feel bad with these, like, that's a magic number, but I mean,
+     * We only use it once, and anyone with "dos dedos de frente" (as we say in my country),
+     * can realize that this is just 4KiB.
+     *
+     * I will let it pass because it is only used once locally, but these things, if properly done,
+     * should be documented. Later I will surely decide to go the Doxygen way, so maybe we will work
+     * on that.
+     */
     std::vector<uint8_t> rx_buffer(4096);
 
     while (m_running.load())
@@ -191,11 +208,16 @@ void TcpPeer::receive_loop()
         }
         else if (0 == bytes_read || WSAEWOULDBLOCK != ::WSAGetLastError())
         {
-            break;
+            break;  // Connection closed or errored...
         }
     }
 
     m_running.store(false);
+
+    if (m_on_disconnected)
+    {
+        m_on_disconnected();
+    }
 }
 
 }  // namespace zclip

@@ -70,6 +70,13 @@ public:
         m_on_frame_received = std::move(callback);
     }
 
+    void set_on_disconnected(std::function<void()> on_disconnected)
+    {
+        m_on_disconnected = std::move(on_disconnected);
+    }
+
+    void wait() const;
+
 private:
     void receive_loop();
 
@@ -79,6 +86,7 @@ private:
 
     FrameParser m_parser;
     FrameReceivedCallback m_on_frame_received;
+    std::function<void()> m_on_disconnected;
 };
 
 }  // namespace zclip
