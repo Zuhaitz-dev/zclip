@@ -38,10 +38,12 @@ add_library(zclip_core STATIC
     src/loop_preventer.cpp
     src/framing.cpp
     src/net_peer.cpp
+    src/crypto.cpp
 )
 
 target_include_directories(zclip_core PUBLIC include)
 target_link_libraries(zclip_core PUBLIC user32 kernel32 ws2_32)
+target_link_libraries(zclip_core PRIVATE bcrypt)
 
 add_executable(zclip src/main.cpp)
 target_link_libraries(zclip PRIVATE zclip_core)
