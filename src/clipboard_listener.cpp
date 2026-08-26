@@ -45,16 +45,11 @@ void ClipboardListener::stop()
         return;
     }
 
-    const DWORD tid = m_thread_id.load();
     const HWND hwnd = m_hwnd.load();
 
     if (nullptr != hwnd)
     {
         ::PostMessageW(hwnd, WM_CLOSE, 0, 0);
-    }
-    else if (0 != tid)
-    {
-        ::PostThreadMessageW(tid, WM_QUIT, 0, 0);
     }
 
     if (m_worker_thread.joinable())

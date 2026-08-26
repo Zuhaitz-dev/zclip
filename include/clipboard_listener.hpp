@@ -31,7 +31,7 @@ namespace zclip
  * clang-tidy warned here because we were copying and that added some overhead...
  * Thanks, clang-tidy.
  */
-using ClipboardCallback = std::function<void(const std::wstring& text)>;
+using ClipboardCallback = std::function<void(std::wstring_view text)>;
 
 class ClipboardListener
 {

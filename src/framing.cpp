@@ -28,8 +28,8 @@ namespace
     }
     return value;
 }
-    
-}   // namespace
+
+}  // namespace
 
 std::vector<std::uint8_t> encode_frame(std::string_view payload)
 {
@@ -39,7 +39,7 @@ std::vector<std::uint8_t> encode_frame(std::string_view payload)
     }
 
     const std::uint32_t payload_len = static_cast<std::uint32_t>(payload.size());
-    const std::uint32_t net_len     = host_to_network32(payload_len);
+    const std::uint32_t net_len = host_to_network32(payload_len);
 
     std::vector<uint8_t> frame(HeaderSize + payload.size());
     std::memcpy(frame.data(), &net_len, HeaderSize);
@@ -74,31 +74,29 @@ std::optional<std::string> FrameParser::pop_frame()
     if (payload_len > MaxPayloadSize)
     {
         /*
-         * Protocol corruption or oversized frame, 
+         * Protocol corruption or oversized frame,
          * so we clear the buffer to protect process.
-        */
+         */
         m_buffer.clear();
         return std::nullopt;
     }
 
-    const std::size_t total_required {HeaderSize + payload_len};
+    const std::size_t total_required{HeaderSize + payload_len};
     if (m_buffer.size() < total_required)
     {
-        /* 
+        /*
          * Frame payload not fully received yet.
-        */
+         */
         return std::nullopt;
     }
 
-    std::string payload(
-        reinterpret_cast<const char*>(m_buffer.data() + HeaderSize),
-        payload_len
-    );
+    std::string payload(reinterpret_cast<const char*>(m_buffer.data() + HeaderSize), payload_len);
 
     /*
      * We erase extracted frame from buffer.
-    */
-    m_buffer.erase(m_buffer.begin(), m_buffer.begin() + static_cast<std::ptrdiff_t>(total_required));
+     */
+    m_buffer.erase(m_buffer.begin(),
+                   m_buffer.begin() + static_cast<std::ptrdiff_t>(total_required));
 
     return payload;
 }
@@ -113,4 +111,4 @@ size_t FrameParser::buffered_bytes() const noexcept
     return m_buffer.size();
 }
 
-}   // namespace zclip
+}  // namespace zclip

@@ -17,10 +17,10 @@ namespace zclip
  */
 [[nodiscard]] constexpr std::uint64_t hash_payload(std::wstring_view str) noexcept
 {
-    constexpr std::uint64_t fnv_offset  {14695981039346656037ULL};
-    constexpr std::uint64_t fnv_prime   {1099511628211ULL};
+    constexpr std::uint64_t fnv_offset{14695981039346656037ULL};
+    constexpr std::uint64_t fnv_prime{1099511628211ULL};
 
-    std::uint64_t hash {fnv_offset};
+    std::uint64_t hash{fnv_offset};
     for (const wchar_t c : str)
     {
         hash ^= static_cast<uint64_t>(c);
@@ -36,7 +36,7 @@ namespace zclip
 class LoopPreventer
 {
 public:
-    LoopPreventer()  = default;
+    LoopPreventer() = default;
     ~LoopPreventer() = default;
 
     LoopPreventer(const LoopPreventer&) = delete;
@@ -59,7 +59,7 @@ public:
     void reset() noexcept;
 
 private:
-    static constexpr std::size_t RingBufferSize{8};
+    static constexpr std::size_t RingBufferSize{32};
     std::array<std::uint64_t, RingBufferSize> m_recent_hashes{};
     size_t m_cursor{0};
     mutable std::mutex m_mutex;

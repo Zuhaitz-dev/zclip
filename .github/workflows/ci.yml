@@ -6,6 +6,9 @@ on:
   pull_request:
     branches: [ "main" ]
 
+permissions:
+  contents: read
+
 jobs:
   build-and-test:
     runs-on: windows-latest
@@ -21,3 +24,28 @@ jobs:
 
       - name: Run Tests
         run: ctest --test-dir build -C Release --output-on-failure
+
+  asan-test:
+      name: AddressSanitizer (MSVC)
+      runs-on: windows-latest
+      steps:
+        - uses: actions/checkout@v4
+        
+        - name: Setup MSVC
+          uses: ilammy/msvc-dev-cmd@v1
+  
+        - name: Configure CMake (ASan)
+          # Natively use MSVC. /fsanitize=address enables ASan.
+          # /Zi generates debug symbols for accurate stack traces.
+          # /INCREMENTAL:NO is strictly required by MSVC for ASan to work.
+          run: >
+            cmake -B build-asan -S . 
+            -DCMAKE_CXX_FLAGS="/fsanitize=address /Zi" 
+            -DCMAKE_EXE_LINKER_FLAGS="/INCREMENTAL:NO" 
+            -DCMAKE_BUILD_TYPE=Debug
+  
+        - name: Build
+          run: cmake --build build-asan --config Debug
+  
+        - name: Test
+          run: ctest --test-dir build-asan -C Debug --output-on-failure

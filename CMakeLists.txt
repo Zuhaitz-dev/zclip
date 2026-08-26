@@ -20,7 +20,10 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if (MSVC)
-    add_compile_options(/W4 /WX /permissive- /utf-8)
+    # I didn't add /EHsc for exception handling at first, I don't usually work with MSVC, but thankfully ASAN warned me...
+    # Seriously, I prefer Linux/macOS, mainly because I can also use the other Sanitizers too...
+    # Well, just had to learn about /wd4702 too because ASAN is injecting nice unreachable code and MSVC is complaining.
+    add_compile_options(/W4 /WX /permissive- /utf-8 /EHsc /wd4702)
     # I had to check this here: https://cmake.org/cmake/help/latest/variable/CMAKE_MSVC_RUNTIME_LIBRARY.html
     # "selects for all following targets a multi-threaded statically-linked runtime library with or without debug information depending on the configuration."
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
@@ -34,10 +37,11 @@ add_library(zclip_core STATIC
     src/clipboard_listener.cpp
     src/loop_preventer.cpp
     src/framing.cpp
+    src/net_peer.cpp
 )
 
 target_include_directories(zclip_core PUBLIC include)
-target_link_libraries(zclip_core PUBLIC user32 kernel32)
+target_link_libraries(zclip_core PUBLIC user32 kernel32 ws2_32)
 
 add_executable(zclip src/main.cpp)
 target_link_libraries(zclip PRIVATE zclip_core)
@@ -80,6 +84,11 @@ add_executable(test_framing tests/test_framing.cpp)
 target_link_libraries(test_framing PRIVATE zclip_core)
 target_include_directories(test_framing PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
+add_executable(test_net_peer tests/test_net_peer.cpp)
+target_link_libraries(test_net_peer PRIVATE zclip_core)
+target_include_directories(test_net_peer PRIVATE ${PROJECT_SOURCE_DIR}/include)
+
 enable_testing()
 add_test(NAME LoopPreventerTest COMMAND test_loop_preventer)
 add_test(NAME FramingTest COMMAND test_framing)
+add_test(NAME NetPeerTest COMMAND test_net_peer)

@@ -1,3 +1,6 @@
+
+#undef NDEBUG
+
 #include "framing.hpp"
 #include <cassert>
 #include <print>
@@ -83,5 +86,4 @@ int main()
     }
 
     std::println("All Wire Framing tests passed successfully!");
-    return 0;
 }
