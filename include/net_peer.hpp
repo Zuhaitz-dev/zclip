@@ -75,6 +75,11 @@ public:
         m_on_disconnected = std::move(on_disconnected);
     }
 
+    /*
+     * Now that we have the crypto part we can already handle the PSK (pre-shared key).
+     */
+    void set_psk(std::string_view psk) { m_psk = psk; }
+
     void wait() const;
 
 private:
@@ -82,11 +87,13 @@ private:
 
     SOCKET m_socket{INVALID_SOCKET};
     std::atomic<bool> m_running{false};
-    std::thread m_rx_thread;
+    mutable std::thread m_rx_thread;
 
     FrameParser m_parser;
     FrameReceivedCallback m_on_frame_received;
     std::function<void()> m_on_disconnected;
+
+    std::string m_psk;
 };
 
 }  // namespace zclip

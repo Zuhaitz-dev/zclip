@@ -51,9 +51,15 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
-echo [TASK] Running clang-tidy analysis...
-clang-tidy src\clipboard_guard.cpp src\clipboard_listener.cpp src\main.cpp --config-file=.clang-tidy -- -std=c++23 -Iinclude -DWIN32_LEAN_AND_MEAN -DNOMINMAX
-exit /b %ERRORLEVEL%
+echo [TASK] Running clang-tidy analysis recursively...
+for %%f in (src\*.cpp) do (
+    echo Linting %%f...
+    clang-tidy %%f --config-file=.clang-tidy -- -std=c++23 -Iinclude -isystem "C:\Program Files (x86)\Windows Kits\10\Include\10.0.26100.0\shared" -isystem "C:\Program Files\Microsoft Visual Studio\18\Community\VC\Tools\MSVC\14.51.36231\include" -DWIN32_LEAN_AND_MEAN -DNOMINMAX
+    if !ERRORLEVEL! NEQ 0 exit /b !ERRORLEVEL!
+)
+exit /b 0
+
+echo [TASK] Runn
 
 :clean
 echo [TASK] Cleaning build directory...

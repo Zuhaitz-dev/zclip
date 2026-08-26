@@ -31,10 +31,23 @@
  *              It is solvable, Cosmopolitan does offer run-time check alternatives, but
  *              it is an overkill for this task, it would be a task in itself.
  *      Phase 3.2: This is just a little change, the specifications mentioned the fact that it has
- *              to "recover reasonably from a temporary connection loss". Before, we pretty much just gave up
- *              with the client if it lost the connection, and we accept a new one when the server loses
- *              connection because we explicitly closed the listening socket after the first client connected...
- *              This subsection is just to fit with the requirements given, in a proper way.
+ *              to "recover reasonably from a temporary connection loss". Before, we pretty much
+ *              just gave up with the client if it lost the connection, and we accept a new one
+ *              when the server loses connection because we explicitly closed the listening socket
+ *              after the first client connected... This subsection is just to fit with the
+ *              requirements given, in a proper way.
+ *  -> Phase 4: So dealing with CNG, we went for AES-256-GCM, maybe an overkill... It was not the
+ *              most pleasant part. Quite verbose, and it is just pretty much following the specific
+ *              algo. For that, and also for portability reasons, I would surely move to a different
+ *              library, but as I stated in the header module, this is not really meant to be in
+ *              prod. I have also been handling some of the tidy warnings. Most of them were simple
+ *              name conventions, then some modernizing parts (with locks, and casts mainly), and
+ *              so on. I am still having some warnings, in the crypto part, but I require the
+ *              const casts over there, and over here, in the main module, as the
+ *              cognitive/cyclomatic complexity of the main function has increased with the
+ *              argument parsing section by a while. So we are above the 25 max threshold for
+ *              control flow. I mean, I could surely move that logic to a static inline helper,
+ *              but it is not the main priority.
  */
 
 #include "clipboard_guard.hpp"
@@ -141,12 +154,62 @@ int main(int argc, char* argv[])
         peer.send_payload(utf16_to_utf8(wtext));
     });
 
-    peer.set_on_disconnected([]() { 
-        std::println(stderr, "[Net] Connection lost! Initiating recovery..."); 
-    });
+    peer.set_on_disconnected(
+        []() { std::println(stderr, "[Net] Connection lost! Initiating recovery..."); });
 
-    constexpr std::int32_t PortCl = 6767;  // Sorry.
-    const bool is_server = (argc > 1 && "--server" == std::string(argv[1]));
+    bool is_server = false;
+    std::string psk;
+    std::string target_ip = "127.0.0.1";  // We default to localhost.
+    std::uint16_t target_port = 6767;     // Sorry.
+
+    for (int i = 1; i < argc; ++i)
+    {
+        std::string arg = argv[i];
+
+        if (arg == "-h" || arg == "--help")
+        {
+            std::println("zclip - Peer-to-Peer Clipboard Sync");
+            std::println("Usage: zclip [OPTIONS]\n");
+            std::println("Options:");
+            std::println(
+                "  --server          Run as the listening server. (Defaults to client mode)");
+            std::println(
+                "  --ip <address>    Target IP address (Client mode only). Default: 127.0.0.1");
+            std::println("  --port <number>   TCP port to bind or connect to. Default: 6767");
+            std::println("  --secret <psk>    Enable AES-256-GCM encryption using this password.");
+            std::println("  -h, --help        Show this help message.\n");
+            std::println("Examples:");
+            std::println("  Server: zclip --server --port 7777 --secret \"hunter2\"");
+            std::println("  Client: zclip --ip 192.168.1.50 --port 7777 --secret \"hunter2\"");
+            return 0;
+        }
+        else if (arg == "--server")
+        {
+            is_server = true;
+        }
+        else if (arg == "--secret" && i + 1 < argc)
+        {
+            psk = argv[++i];  // We treat the next arg as the password.
+        }
+        else if (arg == "--ip" && i + 1 < argc)
+        {
+            target_ip = argv[++i];
+        }
+        else if (arg == "--port" && i + 1 < argc)
+        {
+            target_port = static_cast<uint16_t>(std::stoi(argv[++i]));
+        }
+    }
+
+    if (!psk.empty())
+    {
+        std::println("[Sec] AES-256-GCM Encryption ENABLED.");
+        peer.set_psk(psk);
+    }
+    else
+    {
+        std::println("[Sec] WARNING: No --secret provided. Traffic is UNENCRYPTED.");
+    }
 
     std::println("Sync engine active. Press Ctrl+C to terminate.");
 
@@ -156,26 +219,26 @@ int main(int argc, char* argv[])
     {
         if (is_server)
         {
-            std::println("[Net] Starting server on port {}...", PortCl);
-            if (peer.listen(PortCl).has_value())
+            std::println("[Net] Starting server on port {}...", target_port);
+            if (peer.listen(target_port).has_value())
             {
                 peer.wait();  // So we block the main thread until the connection drops...
             }
             else
             {
-                std::println(stderr, "[Error] Server failed to bind to port {}.", PortCl);
+                std::println(stderr, "[Error] Server failed to bind to port {}.", target_port);
             }
         }
         else
         {
-            std::println("[Net] Connecting to client on 127.0.0.1:{}...", PortCl);
-            if (peer.connect("127.0.0.1", PortCl).has_value())
+            std::println("[Net] Connecting to client on {}:{}...", target_ip, target_port);
+            if (peer.connect(target_ip, target_port).has_value())
             {
                 peer.wait();  // Same here.
             }
             else
             {
-                std::println(stderr, "[Error] Failed to connect to 127.0.0.1:{}.", PortCl);
+                std::println(stderr, "[Error] Failed to connect to {}:{}.", target_ip, target_port);
             }
         }
 

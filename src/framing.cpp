@@ -38,7 +38,7 @@ std::vector<std::uint8_t> encode_frame(std::string_view payload)
         return {};
     }
 
-    const std::uint32_t payload_len = static_cast<std::uint32_t>(payload.size());
+    const auto payload_len = static_cast<std::uint32_t>(payload.size());
     const std::uint32_t net_len = host_to_network32(payload_len);
 
     std::vector<uint8_t> frame(HeaderSize + payload.size());

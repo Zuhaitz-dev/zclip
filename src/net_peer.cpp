@@ -1,5 +1,6 @@
 
 #include "net_peer.hpp"
+#include "crypto.hpp"
 
 #include <cstdio>
 #include <print>
@@ -130,7 +131,7 @@ void TcpPeer::disconnect() noexcept
     /*
      * Must always join, even if the thread gracefully exited and set m_running to false.
      * Either way, once the sanitizer action works properly we can check this.
-    */ 
+     */
     if (m_rx_thread.joinable())
     {
         m_rx_thread.join();
@@ -145,7 +146,33 @@ bool TcpPeer::send_payload(std::string_view utf8_payload)
         return false;
     }
 
-    const auto frame = encode_frame(utf8_payload);
+    std::string payload_to_frame;
+
+    /*
+     * If we count with a PSK configured, we encrypt.
+     */
+    if (!m_psk.empty())
+    {
+        auto encrypted = encrypt_payload(utf8_payload, m_psk);
+        if (!encrypted)
+        {
+            std::println(stderr, "[Net] Encryption failed: {}", encrypted.error());
+            return false;
+        }
+        /*
+         * For the framework, we gotta convert the encrypted raw bytes into a string.
+         */
+        payload_to_frame = std::string(encrypted->begin(), encrypted->end());
+    }
+    else
+    {
+        /*
+         * If not just like we had it before.
+         */
+        payload_to_frame = std::string(utf8_payload);
+    }
+
+    const auto frame = encode_frame(payload_to_frame);
     if (frame.empty())
     {
         return false;
@@ -172,7 +199,7 @@ void TcpPeer::wait() const
 {
     if (m_rx_thread.joinable())
     {
-        const_cast<std::thread&>(m_rx_thread).join();
+        m_rx_thread.join();
     }
 }
 
@@ -198,11 +225,38 @@ void TcpPeer::receive_loop()
         {
             m_parser.append(rx_buffer.data(), bytes_read);
 
-            while (auto payload = m_parser.pop_frame())
+            /*
+             * Same way as we changed the send payload subroutine for crypto,
+             * we gotta change this too.
+             */
+            while (auto raw_payload = m_parser.pop_frame())
             {
-                if (m_on_frame_received)
+                if (!m_psk.empty())
                 {
-                    m_on_frame_received(*payload);
+                    std::span<const uint8_t> cipher_span(
+                        reinterpret_cast<const uint8_t*>(raw_payload->data()), raw_payload->size());
+
+                    auto decrypted = decrypt_payload(cipher_span, m_psk);
+                    if (decrypted)
+                    {
+                        if (m_on_frame_received)
+                        {
+                            m_on_frame_received(*decrypted);
+                        }
+                    }
+                    else
+                    {
+                        std::println(
+                            stderr,
+                            "[Net] Warning: Dropped frame (Decryption/Authentication failed).");
+                    }
+                }
+                else
+                {
+                    if (m_on_frame_received)
+                    {
+                        m_on_frame_received(*raw_payload);
+                    }
                 }
             }
         }
