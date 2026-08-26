@@ -20,7 +20,9 @@ set(CMAKE_CXX_EXTENSIONS OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 if (MSVC)
-    add_compile_options(/W4 /WX /permissive- /utf-8)
+    # I didn't add /EHsc for exception handling at first, I don't usually work with MSVC, but thankfully ASAN warned me...
+    # Seriously, I prefer Linux/macOS, mainly because I can also use the other Sanitizers too...
+    add_compile_options(/W4 /WX /permissive- /utf-8 /EHsc)
     # I had to check this here: https://cmake.org/cmake/help/latest/variable/CMAKE_MSVC_RUNTIME_LIBRARY.html
     # "selects for all following targets a multi-threaded statically-linked runtime library with or without debug information depending on the configuration."
     set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
