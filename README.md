@@ -5,7 +5,7 @@ A lightweight peer-to-peer clipboard sync tool written in modern C++23.
 ## Roadmap & Phases
 
 - [x] **Phase 1:** Native Win32 clipboard monitoring (`WM_CLIPBOARDUPDATE`).
-- [ ] **Phase 2:** Protocol framing, deduplication, and loop prevention.
+- [x] **Phase 2:** Protocol framing, deduplication, and loop prevention.
 - [ ] **Phase 3:** async non-blocking TCP networking
 - [ ] **Phase 4:** Bidirectional synchronization engine
 - [ ] **Phase 5:** System tray UI & Linux support (yes, the penguin will get it too).

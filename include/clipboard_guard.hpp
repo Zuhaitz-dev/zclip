@@ -95,7 +95,7 @@ public:
             m_open = std::exchange(other.m_open, false);
         }
 
-        return *this;  // I forgot.
+        return *this;   // I forgot.
     }
 
     /*

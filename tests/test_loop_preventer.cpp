@@ -1,3 +1,6 @@
+
+#undef NDEBUG
+
 #include "loop_preventer.hpp"
 #include <cassert>
 #include <print>

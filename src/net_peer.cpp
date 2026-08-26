@@ -130,7 +130,7 @@ void TcpPeer::disconnect() noexcept
     /*
      * Must always join, even if the thread gracefully exited and set m_running to false.
      * Either way, once the sanitizer action works properly we can check this.
-     */
+    */ 
     if (m_rx_thread.joinable())
     {
         m_rx_thread.join();
@@ -197,6 +197,7 @@ void TcpPeer::receive_loop()
         if (bytes_read > 0)
         {
             m_parser.append(rx_buffer.data(), bytes_read);
+
             while (auto payload = m_parser.pop_frame())
             {
                 if (m_on_frame_received)
