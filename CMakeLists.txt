@@ -34,10 +34,11 @@ add_library(zclip_core STATIC
     src/clipboard_listener.cpp
     src/loop_preventer.cpp
     src/framing.cpp
+    src/net_peer.cpp
 )
 
 target_include_directories(zclip_core PUBLIC include)
-target_link_libraries(zclip_core PUBLIC user32 kernel32)
+target_link_libraries(zclip_core PUBLIC user32 kernel32 ws2_32)
 
 add_executable(zclip src/main.cpp)
 target_link_libraries(zclip PRIVATE zclip_core)
@@ -80,6 +81,11 @@ add_executable(test_framing tests/test_framing.cpp)
 target_link_libraries(test_framing PRIVATE zclip_core)
 target_include_directories(test_framing PRIVATE ${PROJECT_SOURCE_DIR}/include)
 
+add_executable(test_net_peer tests/test_net_peer.cpp)
+target_link_libraries(test_net_peer PRIVATE zclip_core)
+target_include_directories(test_net_peer PRIVATE ${PROJECT_SOURCE_DIR}/include)
+
 enable_testing()
 add_test(NAME LoopPreventerTest COMMAND test_loop_preventer)
 add_test(NAME FramingTest COMMAND test_framing)
+add_test(NAME NetPeerTest COMMAND test_net_peer)

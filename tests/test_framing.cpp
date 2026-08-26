@@ -83,5 +83,4 @@ int main()
     }
 
     std::println("All Wire Framing tests passed successfully!");
-    return 0;
 }
