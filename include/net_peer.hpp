@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <expected>
 #include <functional>
+#include <mutex>
 #include <span>
 #include <string>
 #include <thread>
@@ -88,6 +89,7 @@ private:
     SOCKET m_socket{INVALID_SOCKET};
     std::atomic<bool> m_running{false};
     mutable std::thread m_rx_thread;
+    mutable std::mutex m_io_mutex;
 
     FrameParser m_parser;
     FrameReceivedCallback m_on_frame_received;

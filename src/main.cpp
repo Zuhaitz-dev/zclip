@@ -234,6 +234,7 @@ int main(int argc, char* argv[])
             std::println("[Net] Connecting to client on {}:{}...", target_ip, target_port);
             if (peer.connect(target_ip, target_port).has_value())
             {
+                std::println("[Net] Connected to {}:{}", target_ip, target_port);
                 peer.wait();  // Same here.
             }
             else
