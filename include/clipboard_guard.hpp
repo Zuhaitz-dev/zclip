@@ -94,11 +94,8 @@ public:
 
             m_open = std::exchange(other.m_open, false);
         }
-<<<<<<< Updated upstream
-=======
 
         return *this;  // I forgot.
->>>>>>> Stashed changes
     }
 
     /*

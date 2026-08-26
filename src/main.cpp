@@ -17,8 +17,6 @@
  *      Phase 2.2: protocol framing it is, find more information over 'include/framing.hpp'
  *              and 'src/framing.cpp'. It was quite simple, pretty much just making sure
  *              the frames are correct.
-<<<<<<< Updated upstream
-=======
  *  -> Phase 3: So this section is about networking, server client, TCP, easy peasy.
  *              If I had to point out an issue, it is just that we are relying a lot on
  *              platform-specific libraries. Say WinSock2 now for example.
@@ -37,7 +35,6 @@
  * with the client if it lost the connection, and we accept a new one when the server loses
  * connection because we explicitly closed the listening socket after the first client connected...
  *              This subsection is just to fit with the requirements given, in a proper way.
->>>>>>> Stashed changes
  */
 
 #include "clipboard_guard.hpp"
