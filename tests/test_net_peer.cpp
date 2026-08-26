@@ -1,13 +1,18 @@
+/*
+ * This test is a bit annoying, but it's okay, I am having fun.
+*/
+
 #undef NDEBUG
 
 #include "net_peer.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <cstdlib>
-#include <future>
 #include <print>
 #include <string>
 #include <thread>
+#include <mutex>
 
 #define REQUIRE(cond, msg) \
     do { \
@@ -24,60 +29,66 @@ int main()
     zclip::TcpPeer server;
     zclip::TcpPeer client;
 
-    // Shift to a more obscure dynamic port to avoid CI collisions
     const uint16_t test_port = 54321; 
 
-    // 1. Start listening on the server
-    auto listen_res = server.listen(test_port);
-    REQUIRE(listen_res.has_value(), "Server failed to listen. Port might be in use.");
+    // 1. Start Server
+    REQUIRE(server.listen(test_port).has_value(), "Server failed to listen.");
 
-    // 2. Setup server callback
-    std::promise<std::string> server_promise;
-    auto server_future = server_promise.get_future();
+    // 2. Setup Server Callback (Crash-proof)
+    std::atomic<bool> server_received_flag{false};
+    std::string server_msg_received;
+    std::mutex server_mtx;
+    
     server.set_on_frame_received([&](const std::string& msg) {
-        server_promise.set_value(msg);
+        std::lock_guard<std::mutex> lock(server_mtx);
+        server_msg_received = msg;
+        server_received_flag.store(true);
     });
 
-    // 3. Connect the client to the server
-    auto connect_res = client.connect("127.0.0.1", test_port);
-    REQUIRE(connect_res.has_value(), "Client failed to connect to server.");
-
-    // Give the server's background accept() thread more time to wake up on slow CI
+    // 3. Start Client
+    REQUIRE(client.connect("127.0.0.1", test_port).has_value(), "Client connect failed.");
     std::this_thread::sleep_for(std::chrono::milliseconds(250));
 
-    // 4. Test Client -> Server transmission
-    const std::string client_msg = "Hello from the client!";
-    bool client_sent = client.send_payload(client_msg);
-    REQUIRE(client_sent, "Client failed to send payload.");
+    // 4. Test Client -> Server
+    const std::string expected_server_msg = "Hello from the client!";
+    REQUIRE(client.send_payload(expected_server_msg), "Client send failed.");
 
-    // Wait up to 3 seconds for the server to receive it
-    auto server_status = server_future.wait_for(std::chrono::seconds(3));
-    REQUIRE(server_status == std::future_status::ready, "Server timed out waiting for message.");
-    REQUIRE(server_future.get() == client_msg, "Server received incorrect message.");
+    // Spin-wait for up to 3 seconds
+    for (int i{}; i < 30 && !server_received_flag.load(); ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+    
+    REQUIRE(server_received_flag.load(), "Server timed out.");
+    REQUIRE(server_msg_received == expected_server_msg, "Server got wrong message.");
     std::println("  [OK] Client -> Server");
 
-    // 5. Setup client callback
-    std::promise<std::string> client_promise;
-    auto client_future = client_promise.get_future();
+    // 5. Setup Client Callback
+    std::atomic<bool> client_received_flag{false};
+    std::string client_msg_received;
+    std::mutex client_mtx;
+
     client.set_on_frame_received([&](const std::string& msg) {
-        client_promise.set_value(msg);
+        std::lock_guard<std::mutex> lock(client_mtx);
+        client_msg_received = msg;
+        client_received_flag.store(true);
     });
 
-    // 6. Test Server -> Client transmission
-    const std::string server_msg = "Acknowledged by server!";
-    bool server_sent = server.send_payload(server_msg);
-    REQUIRE(server_sent, "Server failed to send payload.");
+    // 6. Test Server -> Client
+    const std::string expected_client_msg = "Acknowledged by server!";
+    REQUIRE(server.send_payload(expected_client_msg), "Server send failed.");
 
-    // Wait up to 3 seconds for the client to receive it
-    auto client_status = client_future.wait_for(std::chrono::seconds(3));
-    REQUIRE(client_status == std::future_status::ready, "Client timed out waiting for message.");
-    REQUIRE(client_future.get() == server_msg, "Client received incorrect message.");
+    for (int i{}; i < 30 && !client_received_flag.load(); ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    }
+
+    REQUIRE(client_received_flag.load(), "Client timed out.");
+    REQUIRE(client_msg_received == expected_client_msg, "Client got wrong message.");
     std::println("  [OK] Server -> Client");
 
     // 7. Cleanup
     client.disconnect();
     server.disconnect();
-
+    
     std::println("All NetPeer tests passed successfully!");
     return 0;
 }
