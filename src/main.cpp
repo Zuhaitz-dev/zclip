@@ -141,39 +141,9 @@ int main(int argc, char* argv[])
         peer.send_payload(utf16_to_utf8(wtext));
     });
 
-    constexpr std::int32_t PortCl = 6767;   // Sorry.
-
-    // Simple CLI for P2P routing, but we will improve this... TODO yeah
-    // Also hardcoding ports is... meh? We gotta change that.
-    if (argc > 1 && "--server" == std::string(argv[1]))
-    {
-        std::println("Starting server on port {}...", PortCl);
-
-        if (!peer.listen(PortCl).has_value())
-        {
-            return 1;
-        }
-    }
-    else
-    {
-        std::println("Connecting to client on 127.0.0.1:{}...", PortCl);
-
-        if (!peer.connect("127.0.0.1", PortCl).has_value())
-        {
-            return 1;
-        }
-    }
-
-    std::println("Sync engine active. Press Enter to terminate.");
-
-    listener.start();
-    std::cin.get();
-
-    listener.stop();
-    peer.disconnect();
-
-    peer.set_on_disconnected(
-        []() { std::println(stderr, "[Net] Connection lost! Initiating recovery..."); });
+    peer.set_on_disconnected([]() { 
+        std::println(stderr, "[Net] Connection lost! Initiating recovery..."); 
+    });
 
     constexpr std::int32_t PortCl = 6767;  // Sorry.
     const bool is_server = (argc > 1 && "--server" == std::string(argv[1]));
@@ -215,6 +185,4 @@ int main(int argc, char* argv[])
 
     // Unreachable under normal Ctrl+C exit, but good practice!
     listener.stop();
-  
-    std::println("Terminated cleanly.");
 }
