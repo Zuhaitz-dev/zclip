@@ -34,12 +34,11 @@ jobs:
           version: "18.1.8"
 
       - name: Configure CMake (Sanitizers)
-        # Use Clang compiler on Windows with ASan and UBSan enabled
         run: >
           cmake -B build-sanitizers -S . 
           -T ClangCL 
-          -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -fno-omit-frame-pointer -g" 
-          -DCMAKE_BUILD_TYPE=Debug
+          -DCMAKE_CXX_FLAGS="-fsanitize=address,undefined -g" 
+          -DCMAKE_BUILD_TYPE=RelWithDebInfo
 
       - name: Build
         run: cmake --build build-sanitizers --config Debug
