@@ -1,3 +1,6 @@
+
+#undef NDEBUG
+
 #include "framing.hpp"
 #include <cassert>
 #include <print>

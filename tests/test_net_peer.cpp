@@ -1,4 +1,6 @@
 
+#undef NDEBUG
+
 #include "net_peer.hpp"
 
 #include <cassert>
