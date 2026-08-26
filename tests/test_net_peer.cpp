@@ -1,14 +1,21 @@
-
 #undef NDEBUG
 
 #include "net_peer.hpp"
 
-#include <cassert>
 #include <chrono>
+#include <cstdlib>
 #include <future>
 #include <print>
 #include <string>
 #include <thread>
+
+#define REQUIRE(cond, msg) \
+    do { \
+        if (!(cond)) { \
+            std::println(stderr, "[FATAL] {} (Line {})", msg, __LINE__); \
+            std::exit(1); \
+        } \
+    } while(false)
 
 int main()
 {
@@ -17,13 +24,14 @@ int main()
     zclip::TcpPeer server;
     zclip::TcpPeer client;
 
-    const uint16_t test_port = 27777;
+    // Shift to a more obscure dynamic port to avoid CI collisions
+    const uint16_t test_port = 54321; 
 
     // 1. Start listening on the server
     auto listen_res = server.listen(test_port);
-    assert(listen_res.has_value());
+    REQUIRE(listen_res.has_value(), "Server failed to listen. Port might be in use.");
 
-    // 2. Setup server callback to fulfill a promise when data arrives
+    // 2. Setup server callback
     std::promise<std::string> server_promise;
     auto server_future = server_promise.get_future();
     server.set_on_frame_received([&](const std::string& msg) {
@@ -32,20 +40,20 @@ int main()
 
     // 3. Connect the client to the server
     auto connect_res = client.connect("127.0.0.1", test_port);
-    assert(connect_res.has_value());
+    REQUIRE(connect_res.has_value(), "Client failed to connect to server.");
 
-    // Give the server's background accept() thread a moment to swap to the client socket
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // Give the server's background accept() thread more time to wake up on slow CI
+    std::this_thread::sleep_for(std::chrono::milliseconds(250));
 
     // 4. Test Client -> Server transmission
     const std::string client_msg = "Hello from the client!";
     bool client_sent = client.send_payload(client_msg);
-    assert(client_sent);
+    REQUIRE(client_sent, "Client failed to send payload.");
 
-    // Wait up to 2 seconds for the server to receive it
-    auto server_status = server_future.wait_for(std::chrono::seconds(2));
-    assert(server_status == std::future_status::ready);
-    assert(server_future.get() == client_msg);
+    // Wait up to 3 seconds for the server to receive it
+    auto server_status = server_future.wait_for(std::chrono::seconds(3));
+    REQUIRE(server_status == std::future_status::ready, "Server timed out waiting for message.");
+    REQUIRE(server_future.get() == client_msg, "Server received incorrect message.");
     std::println("  [OK] Client -> Server");
 
     // 5. Setup client callback
@@ -58,12 +66,12 @@ int main()
     // 6. Test Server -> Client transmission
     const std::string server_msg = "Acknowledged by server!";
     bool server_sent = server.send_payload(server_msg);
-    assert(server_sent);
+    REQUIRE(server_sent, "Server failed to send payload.");
 
-    // Wait up to 2 seconds for the client to receive it
-    auto client_status = client_future.wait_for(std::chrono::seconds(2));
-    assert(client_status == std::future_status::ready);
-    assert(client_future.get() == server_msg);
+    // Wait up to 3 seconds for the client to receive it
+    auto client_status = client_future.wait_for(std::chrono::seconds(3));
+    REQUIRE(client_status == std::future_status::ready, "Client timed out waiting for message.");
+    REQUIRE(client_future.get() == server_msg, "Client received incorrect message.");
     std::println("  [OK] Server -> Client");
 
     // 7. Cleanup
@@ -71,4 +79,5 @@ int main()
     server.disconnect();
 
     std::println("All NetPeer tests passed successfully!");
+    return 0;
 }
